@@ -1,50 +1,54 @@
 import pandas as pd
 import psycopg2
+import warnings
 
-# 1. Setup the connection parameters to PostgreSQL
+# Suppress the yellow Pandas connection warning to keep terminal clean
+warnings.filterwarnings('ignore', category=UserWarning)
+
 db_config = {
-    "dbname": "PowerPlantDB",         # Replace with your database name if different
-    "user": "postgres",           # Your verified working username
-    "password": "TGI@WRal2026*#",   # Replace with your actual local password
+    "dbname": "PowerPlantDB",         # Ensure your DB name is correct
+    "user": "postgres",           # Your verified username
+    "password": "TGI@WRal2026*#",   # Replace with your actual working password
     "host": "localhost",
     "port": "5432"
 }
 
 try:
-    # 2. Connect to the database
     conn = psycopg2.connect(**db_config)
     print("Successfully connected to PostgreSQL!")
 
-    # 3. Pulling database tables metadata
-    query = "SELECT* FROM steamproduction LIMIT 100;"
-
-    # 4. Use Pandas to run the SQL and store it in a Python dataframe
+    query = "SELECT * FROM steamproduction LIMIT 100;"
     df = pd.read_sql_query(query, conn)
 
-       # === START OF WEEK 2: DATA TRANSFORMATION ===
+    # === WEEK 2 TRANSFORMATION ===
     print("Starting data transformation...")
-
-    print("\n--- Original Data Preview ---")
-    print(df.head()) 
-
-    print("\n--- Missing Values Count ---")
-    print(df.isnull().sum())
-
-    # REAL TRANSFORMATION: Calculate the Pressure-to-Temperature Ratio
-    print("\nCalculating pressure-to-temperature ratio column...")
     df['pressure_to_temp_ratio'] = df['steampressure'] / df['steamtemperature']
-    
-    # Round it to 4 decimal places so it stays clean
     df['pressure_to_temp_ratio'] = df['pressure_to_temp_ratio'].round(4)
+    print("Transformation complete! Metrics column added.")
 
-    print("\nTransformation complete! New metrics column added successfully.")
-    # === END OF WEEK 2: DATA TRANSFORMATION ===
+    # === WEEK 3 DATA AGGREGATION ===
+    print("\nStarting Week 3 Data Aggregation...")
+    
+    # Group telemetry data and compute the average
+    summary_df = df.groupby('boilerid')[['steamtemperature', 'steampressure', 'pressure_to_temp_ratio']].mean()
+    summary_df = summary_df.reset_index()
+    summary_df = summary_df.round(2)
+    
+    summary_df = summary_df.rename(columns={
+        'steamtemperature': 'avg_steam_temp',
+        'steampressure': 'avg_steam_pressure',
+        'pressure_to_temp_ratio': 'avg_pressure_temp_ratio'
+    })
 
-    # 5. Export that transformed data out into a clean CSV file
+    print("\n--- Aggregated Summary Data Preview ---")
+    print(summary_df)  # Crucial print command
+    print("\nAggregation complete!")
+
+    # === EXPORT DATA ===
     df.to_csv("extracted_data.csv", index=False)
-    print("Data extracted successfully and saved to 'extracted_data.csv'!")
+    summary_df.to_csv("boiler_summary_report.csv", index=False)
+    print("Both raw data and summary report saved successfully!")
 
-    # 6. Clean up and close the database connection
     conn.close()
 
 except Exception as e:
