@@ -48,6 +48,34 @@ try:
     df.to_csv("extracted_data.csv", index=False)
     summary_df.to_csv("boiler_summary_report.csv", index=False)
     print("Both raw data and summary report saved successfully!")
+        # === START OF WEEK 4: CONDITIONAL AUTOMATION & ANOMALIES ===
+    print("\nStarting Week 4 Automated Anomaly Detection...")
+    
+    # 1. Define safety thresholds
+    MAX_SAFE_TEMP = 450.5
+    anomalies_found = []
+
+    # 2. Loop through each row of the summary report using Pandas .iterrows()
+    for index, row in summary_df.iterrows():
+        boiler = row['boilerid']
+        current_avg_temp = row['avg_steam_temp']
+        
+        # 3. Conditional Check: Is the boiler running too hot?
+        if current_avg_temp > MAX_SAFE_TEMP:
+            alert_message = f"ALERT: Boiler ID {int(boiler)} is OVERHEATING! Avg Temp: {current_avg_temp}°C (Max Safe: {MAX_SAFE_TEMP}°C)"
+            print(f"⚠️  {alert_message}")
+            anomalies_found.append({"boilerid": int(boiler), "avg_temp": current_avg_temp, "status": "CRITICAL"})
+        else:
+            print(f"✅ Boiler ID {int(boiler)} is operating within normal safety limits.")
+
+    # 4. Smart Automation: If anomalies exist, write an Emergency Alert File
+    if len(anomalies_found) > 0:
+        alert_df = pd.DataFrame(anomalies_found)
+        alert_df.to_csv("emergency_alerts.log", index=False)
+        print("\n[CRITICAL SUCCESS] Anomaly files generated! Check 'emergency_alerts.log' for details.")
+    else:
+        print("\n[SYSTEM HEALTHY] No thermal anomalies detected across any boiler networks.")
+    # === END OF WEEK 4: CONDITIONAL AUTOMATION & ANOMALIES ===
 
     conn.close()
 
