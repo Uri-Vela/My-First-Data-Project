@@ -52,14 +52,16 @@ try:
     print("\nStarting Week 4 Automated Anomaly Detection...")
     
     # 1. Define safety thresholds
-    MAX_SAFE_TEMP = 450.5
+    MAX_SAFE_TEMP = 450.5  
+    MAX_SAFE_PRESSURE = 45.5
     anomalies_found = []
 
     # 2. Loop through each row of the summary report using Pandas .iterrows()
     for index, row in summary_df.iterrows():
         boiler = row['boilerid']
-        current_avg_temp = row['avg_steam_temp']
-        
+        current_avg_temp = row['avg_steam_temp'] 
+        current_avg_pressure = row['avg_steam_pressure']
+
         # 3. Conditional Check: Is the boiler running too hot?
         if current_avg_temp > MAX_SAFE_TEMP:
             alert_message = f"ALERT: Boiler ID {int(boiler)} is OVERHEATING! Avg Temp: {current_avg_temp}°C (Max Safe: {MAX_SAFE_TEMP}°C)"
@@ -76,6 +78,43 @@ try:
     else:
         print("\n[SYSTEM HEALTHY] No thermal anomalies detected across any boiler networks.")
     # === END OF WEEK 4: CONDITIONAL AUTOMATION & ANOMALIES ===
+        # === START OF WEEK 6: GOOGLE BIGQUERY CLOUD UPLOAD ===
+    print("\nStarting Week 6 Cloud Upload Suite...")
+    import os
+    from google.cloud import bigquery
+
+    # 1. Mount your local cloud passport file
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gcp_key.json"
+    
+    # 2. Initialize the BigQuery engine
+    bq_client = bigquery.Client()
+
+    # 3. Define target table destinations in the cloud
+    # (Format is project_id.dataset_id.table_id)
+    project_id = bq_client.project
+    raw_table_id = f"{project_id}.boiler_analytics.raw_telemetry"
+    summary_table_id = f"{project_id}.boiler_analytics.aggregated_summary"
+
+    # 4. Define the ingestion configuration (Overwrite if table exists, auto-detect columns)
+    job_config = bigquery.LoadJobConfig(
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=True
+    )
+
+    print("Streaming raw data matrix to Google Cloud BigQuery...")
+    # Load raw telemetry dataframe
+    raw_job = bq_client.load_table_from_dataframe(df, raw_table_id, job_config=job_config)
+    raw_job.result() # Wait for the upload to complete successfully
+
+    print("Streaming compiled anomaly summary metrics to BigQuery...")
+    # Load grouped summary dataframe
+    summary_job = bq_client.load_table_from_dataframe(summary_df, summary_table_id, job_config=job_config)
+    summary_job.result()
+
+    print(f"\n🚀 [CLOUD INGESTION SUCCESSFUL] Tables deployed live inside GCP!")
+    print(f"Target Destination A: {raw_table_id}")
+    print(f"Target Destination B: {summary_table_id}")
+    # === END OF WEEK 6: GOOGLE BIGQUERY CLOUD UPLOAD ===
 
     conn.close()
 
